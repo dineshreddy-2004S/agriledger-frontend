@@ -22,6 +22,7 @@ export default function AuthPage({ type, onAuthenticate, onNavigate }) {
     else if (type === 'forgot-user') { endpoint = '/api/forgot-user'; payload = { name }; }
 
     try {
+      // FIXED: Using the VITE_API_URL environment variable instead of localhost
       const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +50,7 @@ export default function AuthPage({ type, onAuthenticate, onNavigate }) {
         onAuthenticate(data.user);
       }
     } catch (err) {
-      console.warn("Backend not reachable or Email not configured. Falling back to local preview mode.");
+      console.warn("Backend not reachable or Email not configured. Falling back to local preview mode.", err);
       
       const localUsers = JSON.parse(localStorage.getItem('agri_users') || '[]');
 

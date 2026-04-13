@@ -3,7 +3,7 @@ import {
   Leaf, LayoutDashboard, TrendingUp, TrendingDown, PieChart, 
   LogOut, Plus, BarChart3, Tractor, Menu, X, BookOpen, Landmark, 
   CreditCard, Edit, Trash2, Shield, Eye, ArrowLeft, List, Activity, 
-  DollarSign, Percent, Wallet, Calendar, Tag, Download, FileText, FileSpreadsheet
+  DollarSign, Percent, Calendar, Tag, Download, FileText, FileSpreadsheet
 } from 'lucide-react';
 
 export default function FarmerDashboard({ user, onLogout }) {
@@ -37,7 +37,6 @@ export default function FarmerDashboard({ user, onLogout }) {
   }, [user]);
 
   const loadExternalLibs = async () => {
-    // Helper to load scripts sequentially to ensure dependencies
     const loadScript = (src) => {
       return new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
@@ -54,15 +53,10 @@ export default function FarmerDashboard({ user, onLogout }) {
     };
 
     try {
-      // 1. Load jsPDF first
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-      
-      // Critical fix for autotable plugin: it expects window.jsPDF to exist
       if (window.jspdf && window.jspdf.jsPDF) {
         window.jsPDF = window.jspdf.jsPDF;
       }
-      
-      // 2. Load AutoTable and XLSX
       await Promise.all([
         loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js'),
         loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js')
@@ -80,6 +74,7 @@ export default function FarmerDashboard({ user, onLogout }) {
     if (token && token !== 'dummy-preview-token') {
         try {
             const headers = { 'Authorization': `Bearer ${token}` };
+            // FIXED API URLs
             const [cropsRes, txsRes, ledgersRes] = await Promise.all([
                 fetch(`${import.meta.env.VITE_API_URL}/api/crops`, { headers }),
                 fetch(`${import.meta.env.VITE_API_URL}/api/transactions`, { headers }),
@@ -92,7 +87,7 @@ export default function FarmerDashboard({ user, onLogout }) {
             
             return; 
         } catch (err) {
-            console.warn("DB fetch failed, falling back to local storage");
+            console.warn("DB fetch failed, falling back to local storage", err);
         }
     }
 
@@ -210,7 +205,6 @@ export default function FarmerDashboard({ user, onLogout }) {
     return Math.max(...cashflowData.map(m => Math.max(m.income, m.expense))) || 1;
   }, [cashflowData]);
 
-  // UI Helpers
   const showToast = (message) => {
     setNotification(message);
     setTimeout(() => setNotification(null), 3000);
@@ -224,8 +218,6 @@ export default function FarmerDashboard({ user, onLogout }) {
       year: 'numeric'
     });
   };
-
-  // --- EXPORT FUNCTIONALITY ---
 
   const exportTransactionsToExcel = (dataList, title = "Transactions") => {
     if (!window.XLSX) {
@@ -270,7 +262,6 @@ export default function FarmerDashboard({ user, onLogout }) {
         crop ? crop.name : 'N/A',
         tx.type,
         tx.category,
-        // Fix: Use text indicator instead of symbol to avoid font rendering issues in PDF
         `Rs. ${Number(tx.amount).toLocaleString('en-IN')}`,
         tx.description || ''
       ];
@@ -281,7 +272,7 @@ export default function FarmerDashboard({ user, onLogout }) {
       body: tableRows,
       startY: 35,
       theme: 'grid',
-      headStyles: { fillColor: [21, 128, 61] } // Tailwind green-700
+      headStyles: { fillColor: [21, 128, 61] }
     });
 
     doc.save(`AgriLedger_${title.replace(/\s+/g, '_')}.pdf`);
@@ -308,8 +299,6 @@ export default function FarmerDashboard({ user, onLogout }) {
     showToast("Summary Exported to Excel");
   };
 
-  // --- TRANSACTION CRUD ---
-
   const handleSaveTransaction = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
@@ -327,7 +316,8 @@ export default function FarmerDashboard({ user, onLogout }) {
     if (token && token !== 'dummy-preview-token') {
         try {
             const method = editingTx ? 'PUT' : 'POST';
-            const url = editingTx ? `http://localhost:5000/api/transactions/${editingTx.id}` : 'http://localhost:5000/api/transactions';
+            // FIXED API URLs
+            const url = editingTx ? `${import.meta.env.VITE_API_URL}/api/transactions/${editingTx.id}` : `${import.meta.env.VITE_API_URL}/api/transactions`;
             const res = await fetch(url, {
                 method,
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -368,7 +358,8 @@ export default function FarmerDashboard({ user, onLogout }) {
     const token = localStorage.getItem('token');
     if (token && token !== 'dummy-preview-token') {
         try {
-            const res = await fetch(`http://localhost:5000/api/transactions/${id}`, {
+            // FIXED API URL
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/transactions/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -411,7 +402,8 @@ export default function FarmerDashboard({ user, onLogout }) {
     if (token && token !== 'dummy-preview-token') {
         try {
             const method = editingLedger ? 'PUT' : 'POST';
-            const url = editingLedger ? `http://localhost:5000/api/ledgers/${editingLedger.id}` : 'http://localhost:5000/api/ledgers';
+            // FIXED API URLs
+            const url = editingLedger ? `${import.meta.env.VITE_API_URL}/api/ledgers/${editingLedger.id}` : `${import.meta.env.VITE_API_URL}/api/ledgers`;
             const res = await fetch(url, {
                 method,
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -452,7 +444,8 @@ export default function FarmerDashboard({ user, onLogout }) {
     const token = localStorage.getItem('token');
     if (token && token !== 'dummy-preview-token') {
         try {
-            const res = await fetch(`http://localhost:5000/api/ledgers/${id}`, {
+            // FIXED API URL
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ledgers/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -488,7 +481,8 @@ export default function FarmerDashboard({ user, onLogout }) {
     const token = localStorage.getItem('token');
     if (token && token !== 'dummy-preview-token') {
         try {
-            const res = await fetch('http://localhost:5000/api/crops', {
+            // FIXED API URL
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/crops`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(newCrop)
@@ -517,7 +511,8 @@ export default function FarmerDashboard({ user, onLogout }) {
     const token = localStorage.getItem('token');
     if (token && token !== 'dummy-preview-token') {
         try {
-            const res = await fetch(`http://localhost:5000/api/crops/${id}`, {
+            // FIXED API URL
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/crops/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -665,14 +660,14 @@ export default function FarmerDashboard({ user, onLogout }) {
                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
                     <div className="p-3 bg-purple-100 text-purple-600 rounded-full"><Landmark className="w-8 h-8"/></div>
                     <div>
-                      <p className="text-sm text-gray-500 font-medium">Total Assets</p>
+                      <p className="text-sm text-gray-500 font-medium">Total Assets (Equipment, Land)</p>
                       <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.asset)}</p>
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-4">
                     <div className="p-3 bg-yellow-100 text-yellow-600 rounded-full"><CreditCard className="w-8 h-8"/></div>
                     <div>
-                      <p className="text-sm text-gray-500 font-medium">Total Liabilities</p>
+                      <p className="text-sm text-gray-500 font-medium">Total Liabilities (Loans)</p>
                       <p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.liability)}</p>
                     </div>
                   </div>
@@ -833,7 +828,6 @@ export default function FarmerDashboard({ user, onLogout }) {
                       <div className="min-w-[400px] h-full flex flex-col">
                         {cashflowData.length > 0 ? (
                           <div className="flex-1 flex items-end justify-between space-x-2 border-b border-gray-200 pb-2 relative pt-8">
-                            {/* Y-Axis lines (Decorative) */}
                             <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 opacity-20">
                                <div className="w-full border-t border-dashed border-gray-400"></div>
                                <div className="w-full border-t border-dashed border-gray-400"></div>
@@ -841,19 +835,16 @@ export default function FarmerDashboard({ user, onLogout }) {
                             </div>
                             {cashflowData.map(point => (
                               <div key={point.label} className="flex flex-col items-center flex-1 group relative h-full justify-end">
-                                {/* Interactive Tooltip */}
                                 <div className="absolute -top-14 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs p-2 rounded pointer-events-none whitespace-nowrap z-10 shadow-lg">
                                   <p className="font-bold text-green-400">Inc: {formatCurrency(point.income)}</p>
                                   <p className="font-bold text-red-400">Exp: {formatCurrency(point.expense)}</p>
                                 </div>
                                 
-                                {/* Bars */}
                                 <div className="flex items-end space-x-1 w-full justify-center h-[90%] relative z-0">
                                   <div className="bg-green-500 rounded-t-md w-full max-w-[24px] transition-all duration-300 hover:brightness-110" style={{ height: `${(point.income / maxCashflow) * 100}%`, minHeight: '4px' }}></div>
                                   <div className="bg-red-500 rounded-t-md w-full max-w-[24px] transition-all duration-300 hover:brightness-110" style={{ height: `${(point.expense / maxCashflow) * 100}%`, minHeight: '4px' }}></div>
                                 </div>
                                 
-                                {/* X-Axis Label */}
                                 <span className="text-[10px] sm:text-xs font-medium text-gray-500 mt-3 truncate w-full text-center">{point.label}</span>
                               </div>
                             ))}
@@ -1011,6 +1002,7 @@ export default function FarmerDashboard({ user, onLogout }) {
                      </div>
                    );
                  })}
+                 {cropStats.length === 0 && <p className="text-gray-500">No reports available. Add some crops and transactions first.</p>}
               </div>
             )}
 
@@ -1155,6 +1147,7 @@ export default function FarmerDashboard({ user, onLogout }) {
                      </div>
                    </div>
                 ))}
+                {crops.length === 0 && <p className="text-gray-500">No crops found.</p>}
               </div>
             )}
           </div>
@@ -1169,10 +1162,27 @@ export default function FarmerDashboard({ user, onLogout }) {
               <X className="w-6 h-6" />
             </button>
             <h2 className="text-xl font-bold text-gray-800 mb-6">{editingTx ? 'Edit Transaction' : 'Record Transaction'}</h2>
+            
             {crops.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">Add a crop first.</div>
+              <div className="text-center py-4">
+                <p className="text-gray-600 text-sm mb-4">You need to add a crop before recording a transaction.</p>
+                <button 
+                  onClick={() => { setShowAddTx(false); setShowAddCrop(true); }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+                >
+                  Create Your First Crop
+                </button>
+              </div>
             ) : ledgers.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">Create a ledger category first.</div>
+              <div className="text-center py-4">
+                <p className="text-gray-600 text-sm mb-4">You need to create an accounting ledger category before recording a transaction.</p>
+                <button 
+                  onClick={() => { setShowAddTx(false); setShowLedgerModal(true); }}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700"
+                >
+                  Create a Ledger
+                </button>
+              </div>
             ) : (
               <form onSubmit={handleSaveTransaction} className="space-y-4">
                 <div>
@@ -1184,7 +1194,13 @@ export default function FarmerDashboard({ user, onLogout }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Type</label>
-                    <select name="type" value={txFormType} onChange={(e) => setTxFormType(e.target.value)} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                    <select 
+                      name="type" 
+                      value={txFormType} 
+                      onChange={(e) => setTxFormType(e.target.value)} 
+                      required 
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                    >
                       <option value="Expense">Expense</option>
                       <option value="Income">Income</option>
                       <option value="Asset">Asset</option>
@@ -1202,6 +1218,9 @@ export default function FarmerDashboard({ user, onLogout }) {
                     {ledgers.filter(l => l.type === txFormType).map((l, idx) => (
                       <option key={`opt-ledger-${l.id || idx}`} value={l.name}>{l.name}</option>
                     ))}
+                    {ledgers.filter(l => l.type === txFormType).length === 0 && (
+                      <option value="" disabled>No ledgers found for this type. Create one first!</option>
+                    )}
                   </select>
                 </div>
                 <div>
@@ -1212,8 +1231,12 @@ export default function FarmerDashboard({ user, onLogout }) {
                   <label className="block text-sm font-medium text-gray-700">Description / Notes</label>
                   <textarea name="description" rows="2" defaultValue={editingTx?.description} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-green-500 focus:border-green-500 sm:text-sm"></textarea>
                 </div>
-                <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors mt-4">
-                  {editingTx ? 'Update Transaction' : 'Save Record'}
+                <button 
+                  type="submit" 
+                  disabled={ledgers.filter(l => l.type === txFormType).length === 0}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors mt-4"
+                >
+                  {ledgers.filter(l => l.type === txFormType).length === 0 ? 'Create a Ledger First' : (editingTx ? 'Update Transaction' : 'Save Record')}
                 </button>
               </form>
             )}
