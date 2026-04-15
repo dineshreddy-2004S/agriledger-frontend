@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import AdminDashboard from './components/AdminDashboard';
@@ -40,14 +39,6 @@ export default function App() {
     localStorage.removeItem('agri_user');
     setUser(null);
     handleNavigate('landing');
-  };
-
-  const goBack = () => {
-    if (historyIndex > 0) setHistoryIndex(historyIndex - 1);
-  };
-
-  const goForward = () => {
-    if (historyIndex < history.length - 1) setHistoryIndex(historyIndex + 1);
   };
 
   const currentView = history[historyIndex];

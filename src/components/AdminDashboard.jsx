@@ -121,7 +121,7 @@ export default function AdminDashboard({ onLogout }) {
       <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col">
         <div className="p-6 border-b border-slate-800 flex items-center space-x-3">
           <Users className="w-8 h-8 text-blue-400" />
-          <span className="text-xl font-bold">Admin Portal</span>
+          <span className="text-xl font-bold">Admin Dinesh Reddy</span>
         </div>
         <div className="p-4 flex-1">
           <button 
@@ -307,4 +307,4 @@ export default function AdminDashboard({ onLogout }) {
       </main>
     </div>
   );
-}
+}  
