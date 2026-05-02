@@ -610,17 +610,17 @@ export default function FarmerDashboard({ user, onLogout }) {
                 {activeTab === 'ledgers' ? (
                   <button onClick={() => openLedgerModal()} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-sm transition-colors">
                     <Plus className="w-5 h-5" />
-                    <span className="hidden sm:inline">Add Ledger Category</span>
+                    <span className="sm:inline">Add Ledger Category</span>
                   </button>
                 ) : (
                   <>
                     <button onClick={() => setShowAddCrop(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-sm transition-colors">
                       <Plus className="w-5 h-5" />
-                      <span className="hidden sm:inline">Add Crop</span>
+                      <span className="sm:inline">Add Crop</span>
                     </button>
                     <button onClick={() => openTxModal()} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-sm transition-colors">
                       <Plus className="w-5 h-5" />
-                      <span className="hidden sm:inline">Add Transaction</span>
+                      <span className="sm:inline">Add Transaction</span>
                     </button>
                   </>
                 )}

@@ -49,7 +49,7 @@ const LandingPage = ({ onNavigate }) => {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2 text-green-700">
             <Leaf className="w-8 h-8 animate-float" />
-            <span className="text-2xl font-black tracking-tighter">AgriLedger</span>
+            <span className="text-xl font-black tracking-tighter lg:text-2xl">AgriLedger</span>
           </div>
           <div className="hidden md:flex space-x-8 text-sm font-bold text-gray-600 uppercase tracking-widest">
             <a href="#features" className="hover:text-green-600 transition-colors">Features</a>
@@ -57,8 +57,8 @@ const LandingPage = ({ onNavigate }) => {
             <a href="#stats" className="hover:text-green-600 transition-colors">Impact</a>
           </div>
           <div className="space-x-4">
-            <button onClick={() => onNavigate('signin')} className="text-gray-600 hover:text-green-700 font-bold transition-all">LOG IN</button>
-            <button onClick={() => onNavigate('signup')} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-full font-bold transition-all shadow-lg hover:shadow-green-200 transform hover:-translate-y-1">
+            <button onClick={() => onNavigate('signin')} className="bg-indigo-700 hover:bg-indigo-950 text-white px-7 py-2.5 rounded-full font-bold transition-all shadow-lg hover:shadow-green-200 cursor-pointer transform hover:-translate-y-1 text-[6px] lg:text-[16px]">LOG IN</button>
+            <button onClick={() => onNavigate('signup')} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-full font-bold transition-all shadow-lg hover:shadow-green-200 cursor-pointer transform hover:-translate-y-1 text-[6px] lg:text-[16px]">
               JOIN NOW
             </button>
           </div>
