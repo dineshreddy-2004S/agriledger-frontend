@@ -6,8 +6,11 @@ import {
   TrendingDown, PieChart, Plus, Menu, X, BookOpen, 
   Landmark, CreditCard, Edit, Shield, Activity, 
   DollarSign, Percent, Calendar, Tag, Download, 
-  FileText, FileSpreadsheet, Globe, Zap, Smartphone, Heart
+  FileText, FileSpreadsheet, Globe, Zap, Smartphone, Heart, List
 } from 'lucide-react';
+
+// Environment safe API configuration
+const API_BASE = 'https://agriledger-backend.onrender.com/api';
 
 // --- STYLES & ANIMATIONS ---
 const styles = `
@@ -93,7 +96,6 @@ const LandingPage = ({ onNavigate }) => {
           </div>
         </div>
       </header>
-
 
       {/* How it Works */}
       <section id="how-it-works" className="py-24 bg-white">
@@ -246,7 +248,7 @@ const LandingPage = ({ onNavigate }) => {
                     <div className="w-24 h-24 rounded-full border-4 border-white shadow-2xl overflow-hidden relative z-10 bg-gray-100">
                         {/* Profile Image with Fallback */}
                         <img 
-                          src="https://avatars.githubusercontent.com/u/169218157?s=48&v=4" 
+                          src="https://avatars.githubusercontent.com/u/169218157?v=4" 
                           alt="Dinesh Reddy - Lead Developer"
                           className="w-full h-full object-cover"
                           onError={(e) => {
@@ -276,26 +278,373 @@ const LandingPage = ({ onNavigate }) => {
 };
 
 // ==========================================
-// 2. AUTH & DASHBOARD WRAPPER
+// 2. AUTH PAGE COMPONENT
 // ==========================================
-const AuthPage = ({ type, onNavigate }) => (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        <div className="max-w-md w-full text-center space-y-8 p-12 bg-white rounded-3xl shadow-xl">
-            <Leaf className="w-12 h-12 text-green-600 mx-auto" />
-            <h2 className="text-4xl font-black text-gray-900">{type === 'signin' ? 'Welcome Back' : 'Get Started'}</h2>
-            <p className="text-gray-500">The server logic for authentication is ready. Please log in locally.</p>
-            <button onClick={() => onNavigate('landing')} className="text-green-600 font-bold hover:underline">← Back to Homepage</button>
-        </div>
-    </div>
-);
+const AuthPage = ({ type, onAuthenticate, onNavigate }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const endpoint = type === 'signin' ? '/signin' : '/signup';
+    const payload = type === 'signin' ? { email, password } : { name, email, password };
+
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Authentication failed");
+
+      if (type === 'signup') {
+        onNavigate('signin');
+      } else {
+        localStorage.setItem('token', data.token);
+        onAuthenticate(data.user);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 font-sans">
+      <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-[40px] shadow-2xl border border-gray-100">
+        <div className="text-center">
+            <Leaf className="w-12 h-12 text-green-600 mx-auto mb-4 animate-float" />
+            <h2 className="text-4xl font-black text-gray-900 tracking-tighter">
+                {type === 'signin' ? 'Welcome Back' : 'Create Account'}
+            </h2>
+            <p className="text-gray-500 mt-2 font-medium">Manage your farm finances like a pro.</p>
+        </div>
+
+        {error && (
+            <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-bold border border-red-100 animate-fadeIn">
+                {error}
+            </div>
+        )}
+
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          {type === 'signup' && (
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Full Name</label>
+                <input 
+                  type="text" 
+                  value={name} 
+                  onChange={(e) => setName(e.target.value)}
+                  required 
+                  className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-green-500 focus:bg-white rounded-2xl outline-none transition-all font-bold"
+                  placeholder="John Doe" 
+                />
+              </div>
+          )}
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Email Address</label>
+            <input 
+              type="email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required 
+              className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-green-500 focus:bg-white rounded-2xl outline-none transition-all font-bold"
+              placeholder="farmer@example.com" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2 ml-1">Password</label>
+            <input 
+              type="password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required 
+              className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-green-500 focus:bg-white rounded-2xl outline-none transition-all font-bold"
+              placeholder="••••••••" 
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-5 rounded-2xl text-lg font-black shadow-xl hover:shadow-green-100 transition-all transform active:scale-95 disabled:opacity-50"
+          >
+            {loading ? 'PROCESSING...' : (type === 'signin' ? 'LOG IN' : 'SIGN UP')}
+          </button>
+        </form>
+
+        <div className="text-center pt-4">
+            <button 
+                onClick={() => onNavigate(type === 'signin' ? 'signup' : 'signin')}
+                className="text-gray-400 font-bold text-sm hover:text-green-600 transition-colors"
+            >
+                {type === 'signin' ? "Don't have an account? Join Now" : "Already have an account? Log In"}
+            </button>
+            <div className="mt-6">
+                <button onClick={() => onNavigate('landing')} className="text-green-600 font-black text-xs uppercase tracking-widest hover:underline">
+                    ← Back to Homepage
+                </button>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// 3. ADMIN DASHBOARD
+// ==========================================
+const AdminDashboard = ({ onLogout }) => {
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => { fetchUsers(); }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/admin/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setUsers(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const toggleAccess = async (userId, currentStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/admin/users/${userId}/access`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_approved: !currentStatus })
+      });
+      if (res.ok) fetchUsers();
+    } catch (err) { console.error(err); }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+      <aside className="w-full md:w-64 bg-gray-900 text-white p-6 shrink-0">
+        <div className="flex items-center space-x-2 mb-10">
+          <ShieldCheck className="text-green-500 w-8 h-8" />
+          <span className="text-xl font-black tracking-tighter">AdminPortal</span>
+        </div>
+        <nav className="space-y-4">
+          <button className="flex items-center space-x-3 w-full p-4 bg-gray-800 rounded-2xl text-green-400 font-bold">
+            <Users className="w-5 h-5" />
+            <span>Farmers</span>
+          </button>
+          <button onClick={onLogout} className="flex items-center space-x-3 w-full p-4 hover:bg-gray-800 rounded-2xl text-red-400 font-bold transition-all">
+            <LogOut className="w-5 h-5" />
+            <span>Logout</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main className="flex-1 p-8 overflow-y-auto">
+        <h1 className="text-4xl font-black text-gray-900 mb-8 tracking-tight">Access Approvals</h1>
+        <div className="bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="p-6 text-xs font-black uppercase tracking-widest text-gray-400">Name</th>
+                <th className="p-6 text-xs font-black uppercase tracking-widest text-gray-400">Email</th>
+                <th className="p-6 text-xs font-black uppercase tracking-widest text-gray-400">Status</th>
+                <th className="p-6 text-xs font-black uppercase tracking-widest text-gray-400 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {users.map(u => (
+                <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="p-6 font-bold text-gray-800">{u.name}</td>
+                  <td className="p-6 text-gray-500">{u.email}</td>
+                  <td className="p-6">
+                    <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase ${u.is_approved ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                      {u.is_approved ? 'Approved' : 'Pending'}
+                    </span>
+                  </td>
+                  <td className="p-6 text-right">
+                    <button 
+                      onClick={() => toggleAccess(u.id, u.is_approved)}
+                      className={`px-6 py-2 rounded-xl text-sm font-black transition-all ${u.is_approved ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-100'}`}
+                    >
+                      {u.is_approved ? 'REVOKE' : 'APPROVE'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+// ==========================================
+// 4. FARMER DASHBOARD
+// ==========================================
+const FarmerDashboard = ({ user, onLogout }) => {
+  const [crops, setCrops] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => { fetchData(); }, []);
+
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const [cRes, tRes] = await Promise.all([
+        fetch(`${API_BASE}/crops`, { headers }),
+        fetch(`${API_BASE}/transactions`, { headers })
+      ]);
+      if (cRes.ok) setCrops(await cRes.json());
+      if (tRes.ok) setTransactions(await tRes.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const stats = useMemo(() => {
+    let inc = 0, exp = 0;
+    transactions.forEach(t => {
+        if (t.type === 'Income') inc += Number(t.amount);
+        if (t.type === 'Expense') exp += Number(t.amount);
+    });
+    return { income: inc, expense: exp, profit: inc - exp };
+  }, [transactions]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+      <aside className="w-full md:w-64 bg-green-800 text-white p-6 shrink-0">
+        <div className="flex items-center space-x-2 mb-10">
+          <Leaf className="w-8 h-8" />
+          <span className="text-xl font-black tracking-tighter">AgriLedger</span>
+        </div>
+        <nav className="space-y-4">
+          <button onClick={() => setActiveTab('overview')} className={`flex items-center space-x-3 w-full p-4 rounded-2xl font-bold transition-all ${activeTab === 'overview' ? 'bg-green-700' : 'hover:bg-green-700/50'}`}>
+            <LayoutDashboard className="w-5 h-5" />
+            <span>Dashboard</span>
+          </button>
+          <button onClick={() => setActiveTab('reports')} className={`flex items-center space-x-3 w-full p-4 rounded-2xl font-bold transition-all ${activeTab === 'reports' ? 'bg-green-700' : 'hover:bg-green-700/50'}`}>
+            <PieChart className="w-5 h-5" />
+            <span>Reports</span>
+          </button>
+          <button onClick={onLogout} className="flex items-center space-x-3 w-full p-4 hover:bg-green-900 rounded-2xl text-green-200 font-bold transition-all">
+            <LogOut className="w-5 h-5" />
+            <span>Sign Out</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main className="flex-1 p-8 overflow-y-auto">
+        <div className="max-w-6xl mx-auto">
+            <h1 className="text-4xl font-black text-gray-900 mb-8 tracking-tight italic">Welcome back, {user.name}!</h1>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-white p-8 rounded-[32px] shadow-2xl border border-gray-100">
+                    <TrendingUp className="text-green-500 mb-4 w-8 h-8" />
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Total Income</p>
+                    <h3 className="text-3xl font-black text-gray-900">₹{stats.income.toLocaleString()}</h3>
+                </div>
+                <div className="bg-white p-8 rounded-[32px] shadow-2xl border border-gray-100">
+                    <TrendingDown className="text-red-500 mb-4 w-8 h-8" />
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Total Expense</p>
+                    <h3 className="text-3xl font-black text-gray-900">₹{stats.expense.toLocaleString()}</h3>
+                </div>
+                <div className="bg-green-600 p-8 rounded-[32px] shadow-2xl text-white">
+                    <BarChart3 className="text-green-200 mb-4 w-8 h-8" />
+                    <p className="text-xs font-black text-green-200 uppercase tracking-widest">Net Profit</p>
+                    <h3 className="text-3xl font-black">₹{stats.profit.toLocaleString()}</h3>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden p-8">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Recent Activity</h3>
+                    <button className="bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-all"><List className="w-5 h-5" /></button>
+                </div>
+                <div className="space-y-4">
+                    {transactions.map(t => (
+                        <div key={t.id} className="flex items-center justify-between p-6 bg-gray-50 rounded-[24px] hover:scale-[1.01] transition-transform">
+                            <div className="flex items-center space-x-4">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                    {t.type === 'Income' ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-gray-900">{t.category}</h4>
+                                    <p className="text-xs text-gray-400 font-bold">{new Date(t.transaction_date).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <span className={`font-black ${t.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
+                                {t.type === 'Income' ? '+' : '-'} ₹{Number(t.amount).toLocaleString()}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+// ==========================================
+// 5. MAIN APP CONTROLLER
+// ==========================================
 export default function App() {
   const [view, setView] = useState('landing');
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    if (token && savedUser) {
+        const u = JSON.parse(savedUser);
+        setUser(u);
+        setView(u.role === 'admin' ? 'admin' : 'farmer');
+    }
+  }, []);
+
+  const handleAuthenticate = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setView(userData.role === 'admin' ? 'admin' : 'farmer');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    setView('landing');
+  };
 
   return (
     <>
+      <style>{styles}</style>
       {view === 'landing' && <LandingPage onNavigate={setView} />}
-      {['signin', 'signup'].includes(view) && <AuthPage type={view} onNavigate={setView} />}
+      {['signin', 'signup'].includes(view) && (
+        <AuthPage 
+            type={view} 
+            onAuthenticate={handleAuthenticate} 
+            onNavigate={setView} 
+        />
+      )}
+      {view === 'admin' && user?.role === 'admin' && (
+        <AdminDashboard onLogout={handleLogout} />
+      )}
+      {view === 'farmer' && user && (
+        <FarmerDashboard user={user} onLogout={handleLogout} />
+      )}
     </>
   );
 }
