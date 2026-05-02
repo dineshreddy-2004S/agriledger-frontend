@@ -66,7 +66,7 @@ export default function AuthPage({ type, onAuthenticate, onNavigate }) {
         setTimeout(() => onNavigate('signin'), 2000);
 
       } else if (type === 'forgot-password') {
-        setSuccessMsg("If your email is registered, you will receive a password reset link shortly. (Preview Mode)");
+        setSuccessMsg("If your email is registered, you will receive a password reset link shortly. Check your inbox! in your Email.");
         setTimeout(() => onNavigate('signin'), 4000);
 
       } else if (type === 'forgot-user') {
