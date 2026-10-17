@@ -20,6 +20,10 @@ export default function FarmerDashboard({ user, onLogout }) {
   const [showAddCrop, setShowAddCrop] = useState(false);
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   
+  // Crop Specific Action States
+  const [editingCrop, setEditingCrop] = useState(null);
+  const [viewingCropFinancials, setViewingCropFinancials] = useState(null);
+  
   // Edit States
   const [editingTx, setEditingTx] = useState(null);
   const [editingLedger, setEditingLedger] = useState(null);
@@ -74,7 +78,6 @@ export default function FarmerDashboard({ user, onLogout }) {
     if (token && token !== 'dummy-preview-token') {
         try {
             const headers = { 'Authorization': `Bearer ${token}` };
-            // FIXED API URLs
             const [cropsRes, txsRes, ledgersRes] = await Promise.all([
                 fetch(`${import.meta.env.VITE_API_URL}/api/crops`, { headers }),
                 fetch(`${import.meta.env.VITE_API_URL}/api/transactions`, { headers }),
@@ -168,6 +171,21 @@ export default function FarmerDashboard({ user, onLogout }) {
     if (total === 0) return [];
     
     const grouped = expenses.reduce((acc, t) => {
+        acc[t.category] = (acc[t.category] || 0) + Number(t.amount);
+        return acc;
+    }, {});
+    
+    return Object.entries(grouped)
+        .map(([name, amount]) => ({ name, amount, percentage: (amount / total) * 100 }))
+        .sort((a, b) => b.amount - a.amount);
+  }, [filteredTransactions]);
+
+  const incomeByCategory = useMemo(() => {
+    const incomes = filteredTransactions.filter(t => t.type === 'Income');
+    const total = incomes.reduce((sum, t) => sum + Number(t.amount), 0);
+    if (total === 0) return [];
+    
+    const grouped = incomes.reduce((acc, t) => {
         acc[t.category] = (acc[t.category] || 0) + Number(t.amount);
         return acc;
     }, {});
@@ -316,7 +334,6 @@ export default function FarmerDashboard({ user, onLogout }) {
     if (token && token !== 'dummy-preview-token') {
         try {
             const method = editingTx ? 'PUT' : 'POST';
-            // FIXED API URLs
             const url = editingTx ? `${import.meta.env.VITE_API_URL}/api/transactions/${editingTx.id}` : `${import.meta.env.VITE_API_URL}/api/transactions`;
             const res = await fetch(url, {
                 method,
@@ -358,7 +375,6 @@ export default function FarmerDashboard({ user, onLogout }) {
     const token = localStorage.getItem('token');
     if (token && token !== 'dummy-preview-token') {
         try {
-            // FIXED API URL
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/transactions/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -402,7 +418,6 @@ export default function FarmerDashboard({ user, onLogout }) {
     if (token && token !== 'dummy-preview-token') {
         try {
             const method = editingLedger ? 'PUT' : 'POST';
-            // FIXED API URLs
             const url = editingLedger ? `${import.meta.env.VITE_API_URL}/api/ledgers/${editingLedger.id}` : `${import.meta.env.VITE_API_URL}/api/ledgers`;
             const res = await fetch(url, {
                 method,
@@ -444,7 +459,6 @@ export default function FarmerDashboard({ user, onLogout }) {
     const token = localStorage.getItem('token');
     if (token && token !== 'dummy-preview-token') {
         try {
-            // FIXED API URL
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ledgers/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -481,7 +495,6 @@ export default function FarmerDashboard({ user, onLogout }) {
     const token = localStorage.getItem('token');
     if (token && token !== 'dummy-preview-token') {
         try {
-            // FIXED API URL
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/crops`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -505,13 +518,46 @@ export default function FarmerDashboard({ user, onLogout }) {
     showToast("New crop successfully added! (Local)");
   };
 
+  const handleUpdateCrop = async (e) => {
+    e.preventDefault();
+    if (!editingCrop) return;
+    const formData = new FormData(e.target);
+    const updatedData = {
+      name: formData.get('name'),
+      season: formData.get('season')
+    };
+
+    const token = localStorage.getItem('token');
+    if (token && token !== 'dummy-preview-token') {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/crops/${editingCrop.id}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedData)
+        });
+        if (res.ok) {
+          showToast("Crop updated successfully in database!");
+          setEditingCrop(null);
+          loadDashboardData();
+          return;
+        }
+      } catch (err) { console.error(err); }
+    }
+
+    const allCrops = JSON.parse(localStorage.getItem('agri_crops') || '[]');
+    const updatedCrops = allCrops.map(c => c.id === editingCrop.id ? { ...c, ...updatedData } : c);
+    localStorage.setItem('agri_crops', JSON.stringify(updatedCrops));
+    loadDashboardData();
+    setEditingCrop(null);
+    showToast("Crop updated successfully! (Local)");
+  };
+
   const deleteCrop = async (id) => {
     if(!window.confirm("Are you sure you want to delete this crop? All transactions linked to it will also be deleted.")) return;
 
     const token = localStorage.getItem('token');
     if (token && token !== 'dummy-preview-token') {
         try {
-            // FIXED API URL
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/crops/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -536,7 +582,13 @@ export default function FarmerDashboard({ user, onLogout }) {
     showToast("Crop and associated transactions deleted. (Local)");
   };
 
+  const cropTransactionsList = useMemo(() => {
+    if (!viewingCropFinancials) return [];
+    return transactions.filter(t => t.crop_id === viewingCropFinancials.id);
+  }, [transactions, viewingCropFinancials]);
+
   const barColors = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-rose-500', 'bg-orange-500', 'bg-yellow-500'];
+  const incomeBarColors = ['bg-emerald-500', 'bg-green-500', 'bg-teal-500', 'bg-cyan-500', 'bg-lime-500', 'bg-blue-500'];
 
   return (
     <div className="min-h-screen bg-gray-100 flex relative">
@@ -810,49 +862,75 @@ export default function FarmerDashboard({ user, onLogout }) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left: Filtered Cash Flow Bar Chart */}
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[400px]">
-                    <div className="mb-6 flex justify-between items-center shrink-0">
-                      <div>
-                        <h2 className="text-lg font-bold text-gray-800">Cash Flow Trend</h2>
-                        <p className="text-sm text-gray-500">Income vs Expense trend</p>
-                      </div>
-                      <div className="flex items-center space-x-3 text-xs font-medium">
-                        <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-green-500 mr-1"></span> Income</div>
-                        <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-red-500 mr-1"></span> Expense</div>
-                      </div>
+                {/* Cash Flow Trend Full Width */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[400px]">
+                  <div className="mb-6 flex justify-between items-center shrink-0">
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-800">Cash Flow Trend</h2>
+                      <p className="text-sm text-gray-500">Income vs Expense trend</p>
                     </div>
-                    
-                    <div className="flex-1 overflow-x-auto custom-scrollbar">
-                      <div className="min-w-[400px] h-full flex flex-col">
-                        {cashflowData.length > 0 ? (
-                          <div className="flex-1 flex items-end justify-between space-x-2 border-b border-gray-200 pb-2 relative pt-8">
-                            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 opacity-20">
-                               <div className="w-full border-t border-dashed border-gray-400"></div>
-                               <div className="w-full border-t border-dashed border-gray-400"></div>
-                               <div className="w-full border-t border-dashed border-gray-400"></div>
-                            </div>
-                            {cashflowData.map(point => (
-                              <div key={point.label} className="flex flex-col items-center flex-1 group relative h-full justify-end">
-                                <div className="absolute -top-14 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs p-2 rounded pointer-events-none whitespace-nowrap z-10 shadow-lg">
-                                  <p className="font-bold text-green-400">Inc: {formatCurrency(point.income)}</p>
-                                  <p className="font-bold text-red-400">Exp: {formatCurrency(point.expense)}</p>
-                                </div>
-                                
-                                <div className="flex items-end space-x-1 w-full justify-center h-[90%] relative z-0">
-                                  <div className="bg-green-500 rounded-t-md w-full max-w-[24px] transition-all duration-300 hover:brightness-110" style={{ height: `${(point.income / maxCashflow) * 100}%`, minHeight: '4px' }}></div>
-                                  <div className="bg-red-500 rounded-t-md w-full max-w-[24px] transition-all duration-300 hover:brightness-110" style={{ height: `${(point.expense / maxCashflow) * 100}%`, minHeight: '4px' }}></div>
-                                </div>
-                                
-                                <span className="text-[10px] sm:text-xs font-medium text-gray-500 mt-3 truncate w-full text-center">{point.label}</span>
-                              </div>
-                            ))}
+                    <div className="flex items-center space-x-3 text-xs font-medium">
+                      <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-green-500 mr-1"></span> Income</div>
+                      <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-red-500 mr-1"></span> Expense</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 overflow-x-auto custom-scrollbar">
+                    <div className="min-w-[400px] h-full flex flex-col">
+                      {cashflowData.length > 0 ? (
+                        <div className="flex-1 flex items-end justify-between space-x-2 border-b border-gray-200 pb-2 relative pt-8">
+                          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 opacity-20">
+                             <div className="w-full border-t border-dashed border-gray-400"></div>
+                             <div className="w-full border-t border-dashed border-gray-400"></div>
+                             <div className="w-full border-t border-dashed border-gray-400"></div>
                           </div>
-                        ) : (
-                          <div className="flex-1 flex items-center justify-center text-gray-400 italic">No transaction data available for this period.</div>
-                        )}
-                      </div>
+                          {cashflowData.map(point => (
+                            <div key={point.label} className="flex flex-col items-center flex-1 group relative h-full justify-end">
+                              <div className="absolute -top-14 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800 text-white text-xs p-2 rounded pointer-events-none whitespace-nowrap z-10 shadow-lg">
+                                <p className="font-bold text-green-400">Inc: {formatCurrency(point.income)}</p>
+                                <p className="font-bold text-red-400">Exp: {formatCurrency(point.expense)}</p>
+                              </div>
+                              
+                              <div className="flex items-end space-x-1 w-full justify-center h-[90%] relative z-0">
+                                <div className="bg-green-500 rounded-t-md w-full max-w-[24px] transition-all duration-300 hover:brightness-110" style={{ height: `${(point.income / maxCashflow) * 100}%`, minHeight: '4px' }}></div>
+                                <div className="bg-red-500 rounded-t-md w-full max-w-[24px] transition-all duration-300 hover:brightness-110" style={{ height: `${(point.expense / maxCashflow) * 100}%`, minHeight: '4px' }}></div>
+                              </div>
+                              
+                              <span className="text-[10px] sm:text-xs font-medium text-gray-500 mt-3 truncate w-full text-center">{point.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center text-gray-400 italic">No transaction data available for this period.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Side-by-Side Breakdowns: Income Breakdown & Expense Breakdown */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left: Income Breakdown Horizontal Bars */}
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[400px]">
+                    <div className="mb-6 shrink-0">
+                      <h2 className="text-lg font-bold text-gray-800">Income Breakdown</h2>
+                      <p className="text-sm text-gray-500">Sources of your revenue</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-5 custom-scrollbar">
+                      {incomeByCategory.length > 0 ? (
+                        incomeByCategory.map((inc, i) => (
+                          <div key={inc.name} className="group">
+                            <div className="flex justify-between text-sm mb-1.5">
+                              <span className="font-semibold text-gray-700 group-hover:text-green-600 transition-colors">{inc.name}</span>
+                              <span className="text-gray-600 font-medium">{formatCurrency(inc.amount)} <span className="text-gray-400 text-xs ml-1">({inc.percentage.toFixed(1)}%)</span></span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                              <div className={`h-full rounded-full ${incomeBarColors[i % incomeBarColors.length]} transition-all duration-1000 ease-out`} style={{ width: `${inc.percentage}%` }}></div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-gray-400 italic">No income recorded for this period.</div>
+                      )}
                     </div>
                   </div>
 
@@ -1124,6 +1202,7 @@ export default function FarmerDashboard({ user, onLogout }) {
               </>
             )}
 
+            {/* TAB: CROPS (MY CROPS) */}
             {activeTab === 'crops' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {crops.map((crop, index) => (
@@ -1138,12 +1217,31 @@ export default function FarmerDashboard({ user, onLogout }) {
                         <p className="text-sm text-gray-500 mt-1">{crop.season}</p>
                      </div>
                      <div className="flex justify-between items-center mt-6">
-                       <button onClick={() => setActiveTab('reports')} className="text-green-600 font-medium hover:text-green-700 text-sm flex items-center">
+                       {/* View Financials button now triggers filtered transactions modal */}
+                       <button 
+                         onClick={() => setViewingCropFinancials(crop)} 
+                         className="text-green-600 font-medium hover:text-green-700 text-sm flex items-center"
+                       >
                          View Financials <TrendingUp className="w-4 h-4 ml-1"/>
                        </button>
-                       <button onClick={() => deleteCrop(crop.id)} className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors" title="Delete Crop">
-                         <Trash2 className="w-4 h-4" />
-                       </button>
+                       <div className="flex items-center space-x-1">
+                         {/* Edit Crop Button */}
+                         <button 
+                           onClick={() => setEditingCrop(crop)} 
+                           className="text-gray-400 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors" 
+                           title="Edit Crop"
+                         >
+                           <Edit className="w-4 h-4" />
+                         </button>
+                         {/* Delete Crop Button */}
+                         <button 
+                           onClick={() => deleteCrop(crop.id)} 
+                           className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors" 
+                           title="Delete Crop"
+                         >
+                           <Trash2 className="w-4 h-4" />
+                         </button>
+                       </div>
                      </div>
                    </div>
                 ))}
@@ -1153,6 +1251,118 @@ export default function FarmerDashboard({ user, onLogout }) {
           </div>
         </div>
       </main>
+
+      {/* MODAL: View Crop Financial Transactions & Export */}
+      {viewingCropFinancials && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6 relative max-h-[85vh] flex flex-col">
+            <button 
+              onClick={() => setViewingCropFinancials(null)} 
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 pr-8 gap-2">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">{viewingCropFinancials.name} - Financials</h2>
+                <p className="text-xs text-gray-500">{viewingCropFinancials.season} • {cropTransactionsList.length} transactions recorded</p>
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => exportTransactionsToPDF(cropTransactionsList, `${viewingCropFinancials.name}_Transactions`)}
+                  className="flex items-center text-xs bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors font-medium shadow-sm"
+                >
+                  <FileText className="w-3.5 h-3.5 mr-1 text-red-600" /> PDF
+                </button>
+                <button 
+                  onClick={() => exportTransactionsToExcel(cropTransactionsList, `${viewingCropFinancials.name}_Transactions`)}
+                  className="flex items-center text-xs bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors font-medium shadow-sm"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-green-600" /> Excel
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto divide-y divide-gray-100 my-4 pr-1">
+              {cropTransactionsList.length > 0 ? (
+                cropTransactionsList.map((tx, idx) => (
+                  <div key={`crop-tx-${tx.id || idx}`} className="py-3 flex items-center justify-between text-sm">
+                    <div>
+                      <p className="font-semibold text-gray-800">{tx.category}</p>
+                      <p className="text-xs text-gray-400">{formatDate(tx.transaction_date)} {tx.description ? `• ${tx.description}` : ''}</p>
+                    </div>
+                    <span className={`font-bold ${['Income', 'Asset'].includes(tx.type) ? 'text-green-600' : 'text-red-600'}`}>
+                      {['Income', 'Asset'].includes(tx.type) ? '+' : '-'}{formatCurrency(tx.amount)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-gray-400 italic">
+                  No transactions recorded for this crop yet.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 flex justify-end">
+              <button 
+                onClick={() => setViewingCropFinancials(null)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Crop Details */}
+      {editingCrop && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 relative">
+            <button onClick={() => setEditingCrop(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+              <X className="w-6 h-6" />
+            </button>
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Edit Crop Details</h2>
+            <form onSubmit={handleUpdateCrop} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Crop Name</label>
+                <input 
+                  type="text" 
+                  name="name" 
+                  defaultValue={editingCrop.name} 
+                  required 
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-medium" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Season/Year</label>
+                <input 
+                  type="text" 
+                  name="season" 
+                  defaultValue={editingCrop.season} 
+                  required 
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-medium" 
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => setEditingCrop(null)} 
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm transition-colors text-sm"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: Add/Edit Transaction */}
       {showAddTx && (
