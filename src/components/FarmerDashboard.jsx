@@ -524,7 +524,8 @@ export default function FarmerDashboard({ user, onLogout }) {
     const formData = new FormData(e.target);
     const updatedData = {
       name: formData.get('name'),
-      season: formData.get('season')
+      season: formData.get('season'),
+      status: editingCrop.status || 'Active'
     };
 
     const token = localStorage.getItem('token');
@@ -550,6 +551,42 @@ export default function FarmerDashboard({ user, onLogout }) {
     loadDashboardData();
     setEditingCrop(null);
     showToast("Crop updated successfully! (Local)");
+  };
+
+  const handleToggleCropStatus = async (crop) => {
+    const newStatus = crop.status === 'Active' ? 'Completed' : 'Active';
+    const token = localStorage.getItem('token');
+
+    if (token && token !== 'dummy-preview-token') {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/crops/${crop.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: crop.name,
+            season: crop.season,
+            status: newStatus
+          })
+        });
+
+        if (res.ok) {
+          showToast(`Crop marked as ${newStatus}!`);
+          loadDashboardData();
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to toggle status on server", err);
+      }
+    }
+
+    const allCrops = JSON.parse(localStorage.getItem('agri_crops') || '[]');
+    const updatedCrops = allCrops.map(c => c.id === crop.id ? { ...c, status: newStatus } : c);
+    localStorage.setItem('agri_crops', JSON.stringify(updatedCrops));
+    loadDashboardData();
+    showToast(`Crop marked as ${newStatus}! (Local)`);
   };
 
   const deleteCrop = async (id) => {
@@ -1210,14 +1247,25 @@ export default function FarmerDashboard({ user, onLogout }) {
                      <div>
                         <div className="flex justify-between items-start">
                           <h3 className="text-lg font-bold text-gray-800">{crop.name}</h3>
-                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${crop.status === 'Active' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                            {crop.status}
-                          </span>
+                          
+                          {/* CLICKABLE STATUS BADGE: Active <-> Completed */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCropStatus(crop)}
+                            title={`Click to mark as ${crop.status === 'Active' ? 'Completed' : 'Active'}`}
+                            className={`px-3 py-1 text-xs rounded-full font-medium transition-colors cursor-pointer select-none ${
+                              crop.status === 'Active'
+                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                          >
+                            {crop.status || 'Active'}
+                          </button>
                         </div>
                         <p className="text-sm text-gray-500 mt-1">{crop.season}</p>
                      </div>
                      <div className="flex justify-between items-center mt-6">
-                       {/* View Financials button now triggers filtered transactions modal */}
+                       {/* View Financials button triggers crop-specific transactions modal */}
                        <button 
                          onClick={() => setViewingCropFinancials(crop)} 
                          className="text-green-600 font-medium hover:text-green-700 text-sm flex items-center"
