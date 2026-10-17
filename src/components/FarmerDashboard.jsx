@@ -20,7 +20,7 @@ export default function FarmerDashboard({ user, onLogout }) {
   const [showAddCrop, setShowAddCrop] = useState(false);
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   
-  // Crop Specific Action States
+  // Crop-Specific Action States
   const [editingCrop, setEditingCrop] = useState(null);
   const [viewingCropFinancials, setViewingCropFinancials] = useState(null);
   
@@ -68,7 +68,7 @@ export default function FarmerDashboard({ user, onLogout }) {
 
       setLibsLoaded(true);
     } catch (err) {
-      console.error("Critical: Failed to load export libraries", err);
+      console.error("Failed to load export libraries", err);
     }
   };
 
@@ -227,6 +227,7 @@ export default function FarmerDashboard({ user, onLogout }) {
     setNotification(message);
     setTimeout(() => setNotification(null), 3000);
   };
+  
   const formatCurrency = (amount) => `₹${Number(amount).toLocaleString('en-IN')}`;
   
   const formatDate = (dateString) => {
@@ -1142,7 +1143,7 @@ export default function FarmerDashboard({ user, onLogout }) {
                                 ${ledger.type === 'Income' ? 'bg-green-50 text-green-700 border-green-200' : 
                                   ledger.type === 'Expense' ? 'bg-red-50 text-red-700 border-red-200' : 
                                   ledger.type === 'Asset' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
-                                  'bg-yellow-50 text-yellow-700 border-yellow-100'}`}>
+                                  'bg-yellow-100 text-yellow-700 border-yellow-100'}`}>
                               {ledger.type}
                             </span>
                           </div>

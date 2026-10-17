@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://your-agriledger-domain.vercel.app/sitemap.xml
